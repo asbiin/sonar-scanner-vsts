@@ -1,4 +1,4 @@
-import * as tl from "azure-pipelines-task-lib/task";
+import * as tl from "azure-pipelines-task-lib";
 import { formatMeasure } from "../helpers/measures";
 import { get } from "../helpers/request";
 import Endpoint, { EndpointType } from "./Endpoint";

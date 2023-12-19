@@ -1,11 +1,12 @@
-import * as tl from "azure-pipelines-task-lib/task";
+import * as tl from "azure-pipelines-task-lib";
 import { HttpProxyAgent, HttpsProxyAgent } from "hpagent";
 import { RequestInit } from "node-fetch";
+import * as semver from "semver";
 import { URL } from "url";
+import { PROP_NAMES } from "../helpers/constants";
 import { getProxyFromURI } from "../helpers/proxyFromEnv";
-import { PROP_NAMES } from "../helpers/utils";
 
-export const REQUEST_TIMEOUT = 60000;
+const REQUEST_TIMEOUT = 60000;
 
 export enum EndpointType {
   SonarCloud = "SonarCloud",
@@ -21,24 +22,30 @@ export interface EndpointData {
 }
 
 export default class Endpoint {
-  constructor(
-    public type: EndpointType,
-    private readonly data: EndpointData,
-  ) {}
+  public type: EndpointType;
 
-  public get auth() {
-    if (!this.data.token && this.data.password && this.data.password.length > 0) {
-      return { user: this.data.username, pass: this.data.password };
+  private readonly data: EndpointData;
+
+  constructor(type: EndpointType, data: EndpointData) {
+    this.type = type;
+    this.data = data;
+    // Remove trailing slash at the end of the base url, if any
+    if (this.data) {
+      this.data.url = this.data?.url.replace(/\/$/, "");
     }
-    return { user: this.data.token || this.data.username };
-  }
-
-  public get organization() {
-    return this.data.organization;
   }
 
   public get url() {
     return this.data.url;
+  }
+
+  public get auth(): { username: string; password: string } {
+    // If using user/password
+    if (!this.data.token && this.data.password && this.data.password.length > 0) {
+      return { username: this.data.username, password: this.data.password };
+    }
+    // Using token
+    return { username: this.data.token || this.data.username, password: "" };
   }
 
   toFetchOptions(endpointUrl: string): Partial<RequestInit> {
@@ -50,7 +57,7 @@ export default class Endpoint {
     // Add HTTP auth from this.auth
     options.headers = {
       Authorization:
-        "Basic " + Buffer.from(`${this.auth.user}:${this.auth.pass ?? ""}`).toString("base64"),
+        "Basic " + Buffer.from(`${this.auth.username}:${this.auth.password}`).toString("base64"),
     };
 
     // Fetch proxy from environment
@@ -79,10 +86,16 @@ export default class Endpoint {
     return JSON.stringify({ type: this.type, data: this.data });
   }
 
-  public toSonarProps() {
+  public toSonarProps(serverVersion: semver.SemVer | string) {
+    const isSonarCloud = Boolean(this.data.token);
+    const authKey =
+      !isSonarCloud && semver.satisfies(serverVersion, "<10.0.0")
+        ? PROP_NAMES.LOGIN
+        : PROP_NAMES.TOKEN;
+
     return {
       [PROP_NAMES.HOST_URL]: this.data.url,
-      [PROP_NAMES.LOGIN]: this.data.token || this.data.username,
+      [authKey]: this.data.token || this.data.username,
       [PROP_NAMES.PASSSWORD]:
         this.data.password && this.data.password.length > 0 ? this.data.password : null,
       [PROP_NAMES.ORG]: this.data.organization,

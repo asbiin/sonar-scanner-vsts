@@ -1,4 +1,4 @@
-import * as tl from "azure-pipelines-task-lib/task";
+import * as tl from "azure-pipelines-task-lib";
 import fetch from "node-fetch";
 import * as semver from "semver";
 import Endpoint from "../sonarqube/Endpoint";
