@@ -1,7 +1,7 @@
 import * as tl from "azure-pipelines-task-lib/task";
-import { HttpProxyAgent, HttpsProxyAgent } from "hpagent";
 import { RequestInit } from "node-fetch";
 import { URL } from "url";
+import { HttpProxyAgent, HttpsProxyAgent } from "../helpers/proxy-agent";
 import { getProxyFromURI } from "../helpers/proxyFromEnv";
 import { PROP_NAMES } from "../helpers/utils";
 
